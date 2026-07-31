@@ -1,37 +1,109 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Compass, ArrowRight, Volume2, VolumeX } from 'lucide-react';
-import introVideo from '../video/intro_marvel.mp4';
+
+// Extractor automático de ID de YouTube
+function getYouTubeId(url) {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+// Acepta URLs de YouTube ("https://www.youtube.com/watch?v=lEmIYhVCGvg") o archivos MP4 ("/video/intro_marvel.mp4")
+const VIDEO_SRC = "https://www.youtube.com/watch?v=lEmIYhVCGvg";
 
 export default function HomeHero({ onExploreUniverses }) {
   const [isMuted, setIsMuted] = useState(true);
   const [showInitialTitle, setShowInitialTitle] = useState(true);
   const [showExploreBtn, setShowExploreBtn] = useState(false);
   const videoRef = useRef(null);
+  const iframeRef = useRef(null);
+  const ytPlayerRef = useRef(null);
+
+  const youtubeId = getYouTubeId(VIDEO_SRC);
+  const isYouTube = Boolean(youtubeId);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (video) {
-      video.muted = true;
-      video.play().catch((err) => {
-        console.warn('Autoplay prevented:', err);
+    if (video && !isYouTube) {
+      video.muted = isMuted;
+      video.play().catch(() => {
+        if (videoRef.current) {
+          videoRef.current.muted = true;
+          setIsMuted(true);
+          videoRef.current.play();
+        }
       });
     }
-  }, []);
 
-  // Sincronización continua con el tiempo del video en cada bucle
+    if (isYouTube) {
+      const loadYTAPI = () => {
+        if (window.YT && window.YT.Player) {
+          try {
+            ytPlayerRef.current = new window.YT.Player('yt-bg-player', {
+              events: {
+                onReady: (event) => {
+                  event.target.playVideo();
+                  event.target.mute();
+                }
+              }
+            });
+          } catch (e) {
+            console.warn('YT Player init:', e);
+          }
+        }
+      };
+
+      if (!window.YT) {
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.body.appendChild(tag);
+        window.onYouTubeIframeAPIReady = loadYTAPI;
+      } else {
+        loadYTAPI();
+      }
+
+      // Función de ciclo continuo para reiniciar la secuencia en cada repetición del bucle (cada 16s)
+      const startLoopSequence = () => {
+        setShowInitialTitle(true);
+        setShowExploreBtn(false);
+
+        const t1 = setTimeout(() => setShowInitialTitle(false), 7000);
+        const t2 = setTimeout(() => setShowExploreBtn(true), 8000);
+
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+        };
+      };
+
+      let cleanupTimers = startLoopSequence();
+      const loopInterval = setInterval(() => {
+        if (cleanupTimers) cleanupTimers();
+        cleanupTimers = startLoopSequence();
+      }, 16000);
+
+      return () => {
+        if (cleanupTimers) cleanupTimers();
+        clearInterval(loopInterval);
+      };
+    }
+  }, [isYouTube, youtubeId]);
+
+  // Sincronización por tiempo exacto para video MP4 en cada repetición de bucle
   const handleTimeUpdate = () => {
-    if (videoRef.current) {
+    if (videoRef.current && !isYouTube) {
       const time = videoRef.current.currentTime;
       
-      // Título inicial visible desde 0:00 hasta el segundo 0:05
-      if (time >= 0 && time < 5) {
+      // Título inicial visible desde 0:00 hasta el segundo 0:07 de cada bucle
+      if (time >= 0 && time < 7) {
         setShowInitialTitle(true);
       } else {
         setShowInitialTitle(false);
       }
 
-      // Botón "Explorar el universo" visible a partir del segundo 8 hasta el final del bucle
+      // Botón "Explorar el universo" visible a partir del segundo 8 hasta el final de cada bucle
       if (time >= 8) {
         setShowExploreBtn(true);
       } else {
@@ -41,10 +113,27 @@ export default function HomeHero({ onExploreUniverses }) {
   };
 
   const toggleSound = () => {
-    if (videoRef.current) {
-      const nextMuteState = !isMuted;
+    const nextMuteState = !isMuted;
+    setIsMuted(nextMuteState);
+
+    if (isYouTube) {
+      if (ytPlayerRef.current && typeof ytPlayerRef.current.unMute === 'function') {
+        if (!nextMuteState) {
+          ytPlayerRef.current.unMute();
+          ytPlayerRef.current.setVolume(100);
+        } else {
+          ytPlayerRef.current.mute();
+        }
+      } else if (iframeRef.current && iframeRef.current.contentWindow) {
+        const win = iframeRef.current.contentWindow;
+        const command = nextMuteState ? 'mute' : 'unmute';
+        win.postMessage(JSON.stringify({ event: 'command', func: command, args: [] }), '*');
+        if (!nextMuteState) {
+          win.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [100] }), '*');
+        }
+      }
+    } else if (videoRef.current) {
       videoRef.current.muted = nextMuteState;
-      setIsMuted(nextMuteState);
       if (videoRef.current.paused) {
         videoRef.current.play();
       }
@@ -52,43 +141,59 @@ export default function HomeHero({ onExploreUniverses }) {
   };
 
   return (
-    <section className="relative w-full min-h-[82vh] flex flex-col items-center justify-center text-center py-16 px-4 overflow-hidden group">
+    <section className="relative w-full h-full flex flex-col items-center justify-center text-center overflow-hidden group">
       
-      {/* Video de Fondo HD en Bucle */}
-      <div className="absolute inset-0 w-full h-full overflow-hidden z-0">
-        <video
-          ref={videoRef}
-          autoPlay
-          loop
-          muted={isMuted}
-          playsInline
-          preload="auto"
-          onTimeUpdate={handleTimeUpdate}
-          style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
-          className="w-full h-full object-cover transition-opacity duration-700 ease-in-out"
-        >
-          <source src={introVideo} type="video/mp4" />
-          <source src="/video/intro_marvel.mp4" type="video/mp4" />
-        </video>
+      {/* Fondo de Video HD (Soporte Híbrido: YouTube API & MP4 HTML5) */}
+      <div className="absolute inset-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+        {isYouTube ? (
+          <div className="relative w-full h-full pointer-events-none overflow-hidden select-none">
+            <iframe
+              id="yt-bg-player"
+              ref={iframeRef}
+              src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${youtubeId}&playsinline=1&enablejsapi=1&autohide=1&disablekb=1&modestbranding=1&fs=0&rel=0&iv_load_policy=3&origin=${encodeURIComponent(window.location.origin)}`}
+              className="absolute top-1/2 left-1/2 w-[120%] h-[120%] -translate-x-1/2 -translate-y-1/2 object-cover pointer-events-none border-0"
+              allow="autoplay; encrypted-media"
+              title="Marvel Intro Background"
+            />
+          </div>
+        ) : (
+          <video
+            ref={videoRef}
+            autoPlay
+            loop
+            muted={isMuted}
+            playsInline
+            preload="auto"
+            onTimeUpdate={handleTimeUpdate}
+            style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
+            className="w-full h-full object-cover transition-opacity duration-700 ease-in-out pointer-events-none"
+          >
+            <source src={VIDEO_SRC} type="video/mp4" />
+            <source src="/video/intro_marvel.mp4" type="video/mp4" />
+          </video>
+        )}
+
+        {/* Escudo de Protección Transparente para evitar controles emergentes */}
+        <div className="absolute inset-0 z-0 bg-transparent pointer-events-auto" />
 
         {/* Capa de degradado cinematográfico ligero */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#101010] via-[#101010]/35 to-black/10 opacity-100" />
-        <div className="absolute inset-0 bg-radial-hero opacity-20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#101010] via-[#101010]/35 to-black/10 opacity-100 pointer-events-none z-0" />
+        <div className="absolute inset-0 bg-radial-hero opacity-20 pointer-events-none z-0" />
       </div>
 
-      {/* Botón de Control de Audio (Esquina Superior Derecha) */}
+      {/* Botón de Control de Audio Interactivo (Esquina Superior Derecha) */}
       <div className="absolute top-6 right-6 z-30 flex items-center gap-2">
         <button
           onClick={toggleSound}
-          className="px-3 py-2 bg-[#101010]/80 hover:bg-marvel-red text-white text-xs font-montserrat font-bold uppercase tracking-wider rounded-none border border-white/20 backdrop-blur-md transition-all flex items-center gap-2 cursor-pointer shadow-lg"
+          className="px-3 py-2 bg-[#101010]/80 hover:bg-marvel-red text-white text-xs font-montserrat font-bold uppercase tracking-wider rounded-none border border-white/20 backdrop-blur-md transition-all flex items-center gap-2 cursor-pointer shadow-lg active:scale-95 z-30"
           title={isMuted ? "Activar Sonido Intro" : "Silenciar Audio"}
         >
-          {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-marvel-gold" />}
+          {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-marvel-gold" />}
           <span className="hidden sm:inline">{isMuted ? "Audio Off" : "Audio On"}</span>
         </button>
       </div>
 
-      {/* Título Inicial: Visible únicamente de 0:00 a 0:05 de cada bucle con transición suave */}
+      {/* Título Inicial: Visible únicamente de 0:00 a 0:07 de cada bucle con transición suave */}
       <div className="relative z-10 max-w-4xl mx-auto px-4">
         <AnimatePresence>
           {showInitialTitle && (

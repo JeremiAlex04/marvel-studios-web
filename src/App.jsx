@@ -10,11 +10,10 @@ export default function App() {
 
   const handleNavigate = (sectionId) => {
     setCurrentView(sectionId);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
-    <div className="min-h-screen bg-heroverse-dark text-slate-100 selection:bg-heroverse-blue selection:text-white flex flex-col justify-between relative">
+    <div className="fixed inset-0 w-screen h-screen overflow-hidden bg-heroverse-dark text-slate-100 selection:bg-heroverse-blue selection:text-white flex flex-col justify-between select-none">
       
       {/* Header con Logo Centrado */}
       <Header
@@ -24,12 +23,12 @@ export default function App() {
         onNavigate={handleNavigate}
       />
 
-      {/* Área Principal a Ancho Completo (Ubicada exactamente debajo del Header) */}
-      <main className="flex-1 w-full relative pt-24 sm:pt-28">
+      {/* Área Principal en Pantalla Completa sin Scroll (100vh Fijo) */}
+      <main className="flex-1 w-full relative overflow-hidden flex items-center justify-center pt-20">
         <HomeHero onExploreUniverses={() => handleNavigate('universos')} />
       </main>
 
-      {/* Footer */}
+      {/* Footer Estilizado Fijo en el Borde Inferior (Visible sin necesidad de Scroll) */}
       <FooterHeroVerse onNavigate={handleNavigate} />
 
     </div>
