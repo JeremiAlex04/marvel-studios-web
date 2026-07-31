@@ -37,6 +37,8 @@ export default function HomeHero({ onExploreUniverses }) {
       });
     }
 
+    let ytCheckInterval = null;
+
     if (isYouTube) {
       const loadYTAPI = () => {
         if (window.YT && window.YT.Player) {
@@ -64,50 +66,44 @@ export default function HomeHero({ onExploreUniverses }) {
         loadYTAPI();
       }
 
-      // Función de ciclo continuo para reiniciar la secuencia en cada repetición del bucle (cada 16s)
-      const startLoopSequence = () => {
-        setShowInitialTitle(true);
-        setShowExploreBtn(false);
-
-        const t1 = setTimeout(() => setShowInitialTitle(false), 7000);
-        const t2 = setTimeout(() => setShowExploreBtn(true), 8000);
-
-        return () => {
-          clearTimeout(t1);
-          clearTimeout(t2);
-        };
-      };
-
-      let cleanupTimers = startLoopSequence();
-      const loopInterval = setInterval(() => {
-        if (cleanupTimers) cleanupTimers();
-        cleanupTimers = startLoopSequence();
-      }, 16000);
+      // Sincronización continua de tiempo en tiempo real para YouTube (0-7s título, 8s+ botón)
+      ytCheckInterval = setInterval(() => {
+        if (ytPlayerRef.current && typeof ytPlayerRef.current.getCurrentTime === 'function') {
+          const time = ytPlayerRef.current.getCurrentTime();
+          if (time >= 0 && time < 7) {
+            setShowInitialTitle(true);
+            setShowExploreBtn(false);
+          } else if (time >= 7 && time < 8) {
+            setShowInitialTitle(false);
+            setShowExploreBtn(false);
+          } else if (time >= 8) {
+            setShowInitialTitle(false);
+            setShowExploreBtn(true);
+          }
+        }
+      }, 250);
 
       return () => {
-        if (cleanupTimers) cleanupTimers();
-        clearInterval(loopInterval);
+        if (ytCheckInterval) clearInterval(ytCheckInterval);
       };
     }
   }, [isYouTube, youtubeId]);
 
-  // Sincronización por tiempo exacto para video MP4 en cada repetición de bucle
+  // Sincronización continua con el tiempo del video MP4 en cada repetición de bucle
   const handleTimeUpdate = () => {
     if (videoRef.current && !isYouTube) {
       const time = videoRef.current.currentTime;
       
-      // Título inicial visible desde 0:00 hasta el segundo 0:07 de cada bucle
+      // Título inicial visible exactamente de 0:00 a 0:07 en cada bucle
       if (time >= 0 && time < 7) {
         setShowInitialTitle(true);
-      } else {
-        setShowInitialTitle(false);
-      }
-
-      // Botón "Explorar el universo" visible a partir del segundo 8 hasta el final de cada bucle
-      if (time >= 8) {
-        setShowExploreBtn(true);
-      } else {
         setShowExploreBtn(false);
+      } else if (time >= 7 && time < 8) {
+        setShowInitialTitle(false);
+        setShowExploreBtn(false);
+      } else if (time >= 8) {
+        setShowInitialTitle(false);
+        setShowExploreBtn(true);
       }
     }
   };
