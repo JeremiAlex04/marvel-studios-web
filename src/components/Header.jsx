@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Heart, Menu, X } from 'lucide-react';
-import logoImg from '../img/logo.png';
 
 export default function Header({ 
   favoritesCount, 
   searchQuery, 
   setSearchQuery,
-  onNavigate 
+  onNavigate,
+  currentView = 'inicio'
 }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -26,11 +26,7 @@ export default function Header({
       initial={{ y: -70, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.9, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out ${
-        scrolled 
-          ? 'bg-[#101010]/95 backdrop-blur-xl py-3 border-b border-[#202020] shadow-2xl shadow-red-950/20' 
-          : 'bg-gradient-to-b from-[#101010]/90 via-[#101010]/50 to-transparent py-4 border-b border-transparent'
-      }`}
+      className="fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out bg-[#101010] py-3.5 border-b border-[#202020] shadow-2xl shadow-black/80"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         
@@ -46,7 +42,7 @@ export default function Header({
             className="cursor-pointer group flex items-center justify-start py-1"
           >
             <img
-              src={logoImg}
+              src="/img/logo.png"
               alt="Marvel Studios Logo"
               className="h-10 sm:h-14 lg:h-16 w-auto object-contain max-w-[200px] sm:max-w-[300px] lg:max-w-[360px] transition-transform duration-300 group-hover:scale-105 filter drop-shadow-2xl"
             />
@@ -64,31 +60,28 @@ export default function Header({
           {/* Navegación de Escritorio */}
           <nav className="hidden lg:flex items-center space-x-1">
             <div className="bg-[#1F1F1F]/90 p-1 rounded-none border border-white/10 backdrop-blur-md flex items-center space-x-1">
-              <button 
-                onClick={() => onNavigate('inicio')} 
-                className="px-4 py-2 text-xs font-montserrat font-bold uppercase tracking-wider text-white hover:text-marvel-red hover:bg-[#2A2A2A] rounded-none transition-all cursor-pointer"
-              >
-                Inicio
-              </button>
-              <button 
-                onClick={() => onNavigate('heroes')} 
-                className="px-4 py-2 text-xs font-montserrat font-bold uppercase tracking-wider text-white hover:text-marvel-red hover:bg-[#2A2A2A] rounded-none transition-all cursor-pointer"
-              >
-                Héroes
-              </button>
-              <button 
-                onClick={() => onNavigate('universos')} 
-                className="px-4 py-2 text-xs font-montserrat font-bold uppercase tracking-wider text-white hover:text-marvel-red hover:bg-[#2A2A2A] rounded-none transition-all cursor-pointer"
-              >
-                Universos
-              </button>
+              {[{ id: 'inicio', label: 'Inicio' }, { id: 'heroes', label: 'Héroes' }, { id: 'universos', label: 'Universos' }].map(nav => (
+                <button
+                  key={nav.id}
+                  onClick={() => onNavigate(nav.id)}
+                  className={`px-4 py-2 text-xs font-montserrat font-bold uppercase tracking-wider rounded-none transition-all cursor-pointer ${
+                    currentView === nav.id
+                      ? 'bg-marvel-red text-white'
+                      : 'text-white hover:text-marvel-red hover:bg-[#2A2A2A]'
+                  }`}
+                >
+                  {nav.label}
+                </button>
+              ))}
               <button 
                 onClick={() => onNavigate('favoritos')} 
-                className="px-4 py-2 text-xs font-montserrat font-bold uppercase tracking-wider text-white hover:text-marvel-red hover:bg-[#2A2A2A] rounded-none transition-all flex items-center gap-2 cursor-pointer"
+                className={`px-4 py-2 text-xs font-montserrat font-bold uppercase tracking-wider rounded-none transition-all flex items-center gap-2 cursor-pointer ${
+                  currentView === 'favoritos' ? 'bg-marvel-red text-white' : 'text-white hover:text-marvel-red hover:bg-[#2A2A2A]'
+                }`}
               >
                 <span>Favoritos</span>
                 {favoritesCount > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-none text-[10px] bg-marvel-red text-white font-black">
+                  <span className="px-1.5 py-0.5 rounded-none text-[10px] bg-white text-marvel-red font-black">
                     {favoritesCount}
                   </span>
                 )}
