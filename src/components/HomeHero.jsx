@@ -200,7 +200,7 @@ export default function HomeHero({ onExploreUniverses }) {
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             >
               <h1 className="font-montserrat font-black text-3xl sm:text-5xl lg:text-6xl uppercase tracking-tight text-white leading-tight drop-shadow-2xl text-center">
-                Explora la cronología completa del <span className="text-marvel-red font-black border-b-4 border-marvel-red inline-block pb-1">universo cinematográfico.</span>
+                Explora la cronología completa del <span className="text-marvel-red font-black border-b-4 border-marvel-red inline-block pb-1">universo cinematográfico</span>
               </h1>
             </motion.div>
           )}

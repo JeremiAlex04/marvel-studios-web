@@ -1,5 +1,4 @@
 import React from 'react';
-import logoImg from '../img/logo.png';
 
 export default function FooterHeroVerse({ onNavigate }) {
   return (
@@ -12,7 +11,7 @@ export default function FooterHeroVerse({ onNavigate }) {
           onClick={() => onNavigate('inicio')}
         >
           <img
-            src={logoImg}
+            src="/img/logo.png"
             alt="Marvel Studios Logo"
             className="h-6 sm:h-8 w-auto object-contain max-w-[140px] sm:max-w-[180px] transition-transform duration-300 group-hover:scale-105 filter drop-shadow-md"
           />
